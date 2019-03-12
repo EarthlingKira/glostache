@@ -444,6 +444,21 @@ using Partial_list = std::vector<Partial>;
 struct Partials {
     
     
+    Partials() noexcept
+    {
+    }
+    
+    
+    Partials(Partial_list partials) noexcept: partials_{std::move(partials)}
+    {
+    }
+    
+    
+    Partials(std::initializer_list<Partial> partials) noexcept: partials_{partials.begin(), partials.end()}
+    {
+    }
+    
+    
     /**
      * Find Partial by name.
      */
