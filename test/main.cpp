@@ -152,3 +152,19 @@ TEST_CASE("Test unescaped variable", "[glostache]") {
     
     CHECK(shave(mustache, stash, partials) == "Hello Ki<br>ra!");
 }
+
+
+TEST_CASE("Test not importing partial when section is false", "[glostache]") {
+    
+    using namespace glo::stache;
+    
+    
+    Mustache mustache{"Hello {{#name}}{{> name}}{{/name}}!"_mustache};
+    
+    Partials partials;
+    
+    partials["name"] = "Blubb"_mustache;
+    
+    CHECK(shave(mustache, Stash{{"name", "Kira"}}, partials) == "Hello Blubb!");
+    CHECK(shave(mustache, Stash{}, partials) == "Hello !");
+}

@@ -347,6 +347,12 @@ void shave(std::string& output, const Mustache& mustache, const Stash& stash, co
                             break;
                             
                             case partial:
+                                
+                                if (sections_excluded_from) {
+                                    state = literal;
+                                    break;
+                                }
+                                
                                 if (const Partial* p = partials.find(tag_name)) {
                                     shave(output, p->mustache_, stash, partials, generate_closure_values());
                                 }
