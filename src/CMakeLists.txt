@@ -15,6 +15,14 @@ set(cpp_files
 
 set(libraries)
 
+add_compile_options(
+    -std=c++17
+
+    -O3
+
+    -march=native
+)
+
 add_library(glostache STATIC
     ${cpp_files}
 )

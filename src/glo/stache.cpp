@@ -22,7 +22,7 @@ namespace stache {
 
 static inline void add_string_html_encoded(std::string_view v, bool nl2br, std::string& o)
 {
-    o.reserve(o.size() + v.size());
+//     o.reserve(o.size() + v.size());
 
     for (auto c: v) {
 
