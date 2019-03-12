@@ -211,9 +211,12 @@ void shave(std::string& output, const Mustache& mustache, const Stash& stash, co
                 switch (c) {
                     
                     case '}':
-                        if (unescaped) {
-                            unescaped = false;
-                            break;
+                        
+                        if (unescaped && it + 1 != mustache.string_.end()) {
+                            ++it;
+                            c = *it;
+                            if (c != '}')
+                                throw std::out_of_range{"Missing third closing brace for tag "s + tag_name};
                         }
                         
                         switch (tag_type) {
@@ -351,6 +354,8 @@ void shave(std::string& output, const Mustache& mustache, const Stash& stash, co
                                 state = literal;
                             break;
                         }
+                        
+                        unescaped = false;
                         
                     break;
                     

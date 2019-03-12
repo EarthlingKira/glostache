@@ -135,3 +135,20 @@ TEST_CASE("Test dot-notation partial", "[glostache]") {
     
     CHECK(shave(mustache, stash, partials) == "Hello Kira!");
 }
+
+
+TEST_CASE("Test unescaped variable", "[glostache]") {
+    
+    using namespace glo::stache;
+    
+    
+    Mustache mustache{"Hello {{{name}}}!"_mustache};
+    
+    Stash stash;
+    
+    stash["name"] = "Ki<br>ra";
+    
+    Partials partials;
+    
+    CHECK(shave(mustache, stash, partials) == "Hello Ki<br>ra!");
+}
