@@ -160,6 +160,8 @@ void shave(std::string& output, const Mustache& mustache, const Stash& stash, co
                         
                         output += '{';
                         output += c;
+                        
+                        state = literal;
                     break;
                 }
             break;
