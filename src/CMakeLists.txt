@@ -15,7 +15,7 @@ set(cpp_files
 
 set(libraries)
 
-add_library(glostache_lib STATIC
+add_library(glostache STATIC
     ${cpp_files}
 )
 
@@ -29,7 +29,7 @@ add_library(glostache_lib STATIC
 # )
 
 
-install(TARGETS glostache_lib
+install(TARGETS glostache
         ARCHIVE DESTINATION lib64)
         
 install(DIRECTORY
