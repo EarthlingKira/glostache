@@ -7,7 +7,7 @@ add_executable(glostache_test
 
 include_directories(test)
     
-target_link_libraries(glostache_test PRIVATE glostache_lib)
+target_link_libraries(glostache_test PRIVATE glostache)
 
 
 install(TARGETS glostache_test
