@@ -55,22 +55,7 @@ static inline void add_string_html_encoded(std::string_view v, bool nl2br, std::
 
 
 
-struct Section {
-    std::string name_;
-    const Value* value_;
-    std::string::const_iterator begin_;
-
-    const Value_list* value_list_{nullptr};
-    Value_list::const_iterator value_list_it_{};
-};
-
-
-
-using Section_list = std::vector<Section>;
-
-
-
-void shave(std::string& output, const Mustache& mustache, const Stash& stash, const Partials& partials, Closure_values closure_values)
+void shave(std::string& output, const Mustache& mustache, const Stash& stash, const Partials& partials, Section_list& sections)
 {
     enum State {
         literal,
@@ -94,8 +79,7 @@ void shave(std::string& output, const Mustache& mustache, const Stash& stash, co
 
     size_t sections_excluded_from = 0;
 
-
-    Section_list sections;
+    size_t inherited_section_count = sections.size();
 
     auto find_node = [&](std::string_view tag_name){
         for (auto section_it = sections.rbegin(); section_it != sections.rend(); ++section_it)
@@ -103,19 +87,7 @@ void shave(std::string& output, const Mustache& mustache, const Stash& stash, co
                 if (const Node* node = v->get_stash_ptr()->find(tag_name); node)
                     return node;
 
-        for (auto closure_val_it = closure_values.rbegin(); closure_val_it != closure_values.rend(); ++closure_val_it)
-            if (const Value* v = *closure_val_it; v && v->is_stash_ptr())
-                if (const Node* node = v->get_stash_ptr()->find(tag_name); node)
-                    return node;
-
         return stash.find(tag_name);
-    };
-
-    auto generate_closure_values = [&]{
-        Closure_values v;
-        for (const Section& s: sections)
-            v.push_back(s.value_);
-        return v;
     };
 
     bool unescaped = false;
@@ -243,16 +215,6 @@ void shave(std::string& output, const Mustache& mustache, const Stash& stash, co
                                             }
                                         }
                                     }
-                                    else if (!closure_values.empty()) {
-                                        if (closure_values.back() && closure_values.back()->is_string()) {
-                                            if (unescaped) {
-                                                output += closure_values.back()->get_string();
-                                            }
-                                            else {
-                                                add_string_html_encoded(closure_values.back()->get_string(), false, output);
-                                            }
-                                        }
-                                    }
 
                                     state = literal;
                                     break;
@@ -324,7 +286,12 @@ void shave(std::string& output, const Mustache& mustache, const Stash& stash, co
 
                             case close_section:
 
-                                if (sections.empty() || sections.back().name_ != tag_name)
+                                if (sections.size() <= inherited_section_count)
+                                    throw std::runtime_error{"Closing one too many section "s + tag_name};
+
+                                assert(!sections.empty());
+
+                                if (sections.back().name_ != tag_name)
                                     throw std::runtime_error{"Unclosed section "s + tag_name};
 
                                 if (!sections_excluded_from &&
@@ -358,7 +325,7 @@ void shave(std::string& output, const Mustache& mustache, const Stash& stash, co
                                 }
 
                                 if (const Partial* p = partials.find(tag_name)) {
-                                    shave(output, p->mustache_, stash, partials, generate_closure_values());
+                                    shave(output, p->mustache_, stash, partials, sections);
                                 }
 
                                 state = literal;
@@ -400,17 +367,8 @@ void shave(std::string& output, const Mustache& mustache, const Stash& stash, co
     }
 
 
-    if (!sections.empty())
+    if (sections.size() > inherited_section_count)
         throw std::runtime_error{"Unfinished section "s + sections.back().name_};
-}
-
-
-
-std::string shave(const Mustache& mustache, const Stash& stash, const Partials& partials, Closure_values closure_values)
-{
-    std::string output;
-    shave(output, mustache, stash, partials, std::move(closure_values));
-    return output;
 }
 
 
