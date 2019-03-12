@@ -70,6 +70,7 @@ void shave(std::string& output, const Mustache& mustache, const Stash& stash, co
     enum Tag_type {
         comment,
         variable,
+        self_variable,
         section,
         inverted_section,
         close_section,
@@ -148,6 +149,7 @@ void shave(std::string& output, const Mustache& mustache, const Stash& stash, co
                     case '^': tag_type = inverted_section; tag_name.clear(); state = parsing_tag_name; break;
                     case '/': tag_type = close_section; tag_name.clear(); state = parsing_tag_name; break;
                     case '>': tag_type = partial; tag_name.clear(); state = parsing_tag_name; break;
+                    case '.': tag_type = self_variable; state = waiting_for_first_closing_brace; break;
                     default: tag_type = variable; tag_name = c; state = parsing_tag_name; break;
                 }
             break;
@@ -197,25 +199,31 @@ void shave(std::string& output, const Mustache& mustache, const Stash& stash, co
                                 state = literal;
                             break;
 
+                            case self_variable: {
 
-                            case variable: {
                                 if (sections_excluded_from) {
                                     state = literal;
                                     break;
                                 }
 
-                                if (tag_name == ".") {
-                                    if (!sections.empty()) {
-                                        if (sections.back().value_ && sections.back().value_->is_string()) {
-                                            if (unescaped) {
-                                                output += sections.back().value_->get_string();
-                                            }
-                                            else {
-                                                add_string_html_encoded(sections.back().value_->get_string(), false, output);
-                                            }
+                                if (!sections.empty()) {
+                                    if (sections.back().value_ && sections.back().value_->is_string()) {
+                                        if (unescaped) {
+                                            output += sections.back().value_->get_string();
+                                        }
+                                        else {
+                                            add_string_html_encoded(sections.back().value_->get_string(), false, output);
                                         }
                                     }
+                                }
 
+                                state = literal;
+                                break;
+                            }
+
+
+                            case variable: {
+                                if (sections_excluded_from) {
                                     state = literal;
                                     break;
                                 }
