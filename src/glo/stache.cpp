@@ -4,6 +4,8 @@
 
 #include <assert.h>
 
+#include <fstream>
+
 
 using std::string_literals::operator""s;
 
@@ -51,6 +53,18 @@ static inline void add_string_html_encoded(std::string_view v, bool nl2br, std::
                 break;
         }
     }
+}
+
+
+
+glo::stache::Partial load_partial_by_name(std::filesystem::path folder, std::string name)
+{
+    std::filesystem::path path = folder / (name + ".mustache"s);
+    std::ifstream ifstream{path.string()};
+    return {
+        name,
+        std::string{std::istreambuf_iterator<char>{ifstream},
+                    std::istreambuf_iterator<char>{}}};
 }
 
 

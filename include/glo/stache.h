@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <memory>
 #include <optional>
+#include <filesystem>
 
 
 
@@ -528,6 +529,10 @@ struct Partials {
 
     Partial_list partials_;
 };
+
+
+
+glo::stache::Partial load_partial_by_name(std::filesystem::path folder, std::string name);
 
 
 

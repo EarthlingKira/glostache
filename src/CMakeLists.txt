@@ -27,6 +27,8 @@ add_library(glostache STATIC
     ${cpp_files}
 )
 
+target_link_libraries(glostache PUBLIC stdc++fs)
+
 # add_executable(glostache_bin
 #     main.cpp
 # )
@@ -39,10 +41,10 @@ add_library(glostache STATIC
 
 install(TARGETS glostache
         ARCHIVE DESTINATION lib64)
-        
+
 install(DIRECTORY
         ../include/ DESTINATION include
         FILES_MATCHING PATTERN "*.h"
         PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)
 
-        
+
