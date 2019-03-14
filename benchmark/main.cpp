@@ -93,14 +93,14 @@ static void basic_usage_glostache(benchmark::State& state) {
         "{{#comments}}<li class=\"comment\"><h5>{{name}}</h5>"
         "<p>{{body}}</p></li>{{/comments}}</ul></div>"};
 
-    auto comment_view = Stash{
+    auto comment_view = Object{
         {"header", std::string{"My Post Comments"}},
-            {"comments", Value_list{
-                Stash{{"name", std::string{"Joe"}}, {"body", std::string{"Thanks for this post!"}}},
-                Stash{{"name", std::string{"Sam"}}, {"body", std::string{"Thanks for this post!"}}},
-                Stash{{"name", std::string{"Heather"}}, {"body", std::string{"Thanks for this post!"}}},
-                Stash{{"name", std::string{"Kathy"}}, {"body", std::string{"Thanks for this post!"}}},
-                Stash{{"name", std::string{"George"}}, {"body", std::string{"Thanks for this post!"}}}}}};
+            {"comments", Array{
+                Object{{"name", std::string{"Joe"}}, {"body", std::string{"Thanks for this post!"}}},
+                Object{{"name", std::string{"Sam"}}, {"body", std::string{"Thanks for this post!"}}},
+                Object{{"name", std::string{"Heather"}}, {"body", std::string{"Thanks for this post!"}}},
+                Object{{"name", std::string{"Kathy"}}, {"body", std::string{"Thanks for this post!"}}},
+                Object{{"name", std::string{"George"}}, {"body", std::string{"Thanks for this post!"}}}}}};
 
     Partials partials;
                 
@@ -123,13 +123,13 @@ static void glostache_usage(benchmark::State& state)
     Mustache mustache{tmp};
 
 //     int n = 0;
-    Stash data
+    Object data
     {
         {"header", "Colors"s},
         {"items",
-            Value_list
+            Array
             {
-                Stash
+                Object
                 {
                     {"very_long_key_name1", "red"},
                     {"very_long_key_name2", "red"},
@@ -144,7 +144,7 @@ static void glostache_usage(benchmark::State& state)
                     {"first", true},
                     {"url", "#Red"s}
                 },
-                Stash
+                Object
                 {
                     {"very_long_key_name1", "red"},
                     {"very_long_key_name2", "red"},
@@ -159,7 +159,7 @@ static void glostache_usage(benchmark::State& state)
                     {"link", true},
                     {"url", "#Green"s}
                 },
-                Stash
+                Object
                 {
                     {"very_long_key_name1", "red"},
                     {"very_long_key_name2", "red"},
@@ -178,12 +178,12 @@ static void glostache_usage(benchmark::State& state)
         },
         {"empty", false},
 //         {"count", lambda{[&n]() -> node { return ++n; }}},
-        {"array", Value_list{1, 2, 3}},
-        {"a", Stash{{"b", Stash{{"c", true}}}}},
+        {"array", Array{1, 2, 3}},
+        {"a", Object{{"b", Object{{"c", true}}}}},
         {"comments",
-            Value_list
+            Array
             {
-                Stash
+                Object
                 {
                     {"very_long_key_name1", "red"},
                     {"very_long_key_name2", "red"},
@@ -197,7 +197,7 @@ static void glostache_usage(benchmark::State& state)
                     {"very_long_key_name", "Joe"s},
                     {"body", "<html> should be escaped"s}
                 },
-                Stash
+                Object
                 {
                     {"very_long_key_name1", "red"},
                     {"very_long_key_name2", "red"},
@@ -211,7 +211,7 @@ static void glostache_usage(benchmark::State& state)
                     {"very_long_key_name", "Sam"s},
                     {"body", "{{mustache}} can be seen"s}
                 },
-                Stash
+                Object
                 {
                     {"very_long_key_name1", "red"},
                     {"very_long_key_name2", "red"},

@@ -16,9 +16,9 @@ namespace stache {
 
 
 struct Value;
-struct Stash;
+struct Object;
 
-using Stash_ptr = std::unique_ptr<Stash>;
+using Object_ptr = std::unique_ptr<Object>;
 
 
 
@@ -32,7 +32,7 @@ using Stash_ptr = std::unique_ptr<Stash>;
 /**
  * A variable value list, can contain different types.
  */
-using Value_list = std::vector<Value>;
+using Array = std::vector<Value>;
 
 
 
@@ -49,9 +49,9 @@ enum class Strong_boolean {
 struct Value {
     using Variant = std::variant<std::string,
 //                                  String_list,
-                                 Stash_ptr,
+                                 Object_ptr,
                                  Strong_boolean,
-                                 Value_list>;
+                                 Array>;
 
 
     Value() noexcept: v_{Strong_boolean::False}
@@ -62,24 +62,24 @@ struct Value {
     {
         if (v.is_string())
             v_ = v.get_string();
-        else if (v.is_stash_ptr())
-            v_ = std::make_unique<Stash>(*v.get_stash_ptr());
+        else if (v.is_object_ptr())
+            v_ = std::make_unique<Object>(*v.get_object_ptr());
         else if (v.is_bool())
             v_ = v.get_strong_bool();
-        else if (v.is_value_list())
-            v_ = v.get_value_list();
+        else if (v.is_array())
+            v_ = v.get_array();
     }
 
     Value& operator=(const Value& v) noexcept
     {
         if (v.is_string())
             v_ = v.get_string();
-        else if (v.is_stash_ptr())
-            v_ = std::make_unique<Stash>(*v.get_stash_ptr());
+        else if (v.is_object_ptr())
+            v_ = std::make_unique<Object>(*v.get_object_ptr());
         else if (v.is_bool())
             v_ = v.get_strong_bool();
-        else if (v.is_value_list())
-            v_ = v.get_value_list();
+        else if (v.is_array())
+            v_ = v.get_array();
 
         return *this;
     }
@@ -96,15 +96,15 @@ struct Value {
     {
     }
 
-    Value(Stash_ptr v) noexcept: v_{std::move(v)}
+    Value(Object_ptr v) noexcept: v_{std::move(v)}
     {
     }
 
-    Value(const Stash& v) noexcept: v_{std::make_unique<Stash>(v)}
+    Value(const Object& v) noexcept: v_{std::make_unique<Object>(v)}
     {
     }
 
-    Value(Stash&& v) noexcept: v_{std::make_unique<Stash>(std::move(v))}
+    Value(Object&& v) noexcept: v_{std::make_unique<Object>(std::move(v))}
     {
     }
 
@@ -116,7 +116,7 @@ struct Value {
     {
     }
 
-    Value(Value_list v) noexcept: v_{std::move(v)}
+    Value(Array v) noexcept: v_{std::move(v)}
     {
     }
 
@@ -145,21 +145,21 @@ struct Value {
 //         return *this;
 //     }
 
-    Value& operator=(Stash_ptr v) noexcept
+    Value& operator=(Object_ptr v) noexcept
     {
         v_ = std::move(v);
         return *this;
     }
 
-    Value& operator=(const Stash& v) noexcept
+    Value& operator=(const Object& v) noexcept
     {
-        v_ = std::make_unique<Stash>(v);
+        v_ = std::make_unique<Object>(v);
         return *this;
     }
 
-    Value& operator=(Stash&& v) noexcept
+    Value& operator=(Object&& v) noexcept
     {
-        v_ = std::make_unique<Stash>(std::move(v));
+        v_ = std::make_unique<Object>(std::move(v));
         return *this;
     }
 
@@ -175,7 +175,7 @@ struct Value {
         return *this;
     }
 
-    Value& operator=(Value_list v) noexcept
+    Value& operator=(Array v) noexcept
     {
         v_ = std::move(v);
         return *this;
@@ -217,19 +217,19 @@ struct Value {
 
 
 
-    bool is_stash_ptr() const noexcept
+    bool is_object_ptr() const noexcept
     {
-        return std::holds_alternative<Stash_ptr>(v_);
+        return std::holds_alternative<Object_ptr>(v_);
     }
 
-    const Stash_ptr& get_stash_ptr() const
+    const Object_ptr& get_object_ptr() const
     {
-        return std::get<Stash_ptr>(v_);
+        return std::get<Object_ptr>(v_);
     }
 
-    Stash_ptr& get_stash_ptr_ref()
+    Object_ptr& get_object_ptr_ref()
     {
-        return std::get<Stash_ptr>(v_);
+        return std::get<Object_ptr>(v_);
     }
 
 
@@ -256,19 +256,19 @@ struct Value {
 
 
 
-    bool is_value_list() const noexcept
+    bool is_array() const noexcept
     {
-        return std::holds_alternative<Value_list>(v_);
+        return std::holds_alternative<Array>(v_);
     }
 
-    const Value_list& get_value_list() const
+    const Array& get_array() const
     {
-        return std::get<Value_list>(v_);
+        return std::get<Array>(v_);
     }
 
-    Value_list& get_value_list_ref()
+    Array& get_array_ref()
     {
-        return std::get<Value_list>(v_);
+        return std::get<Array>(v_);
     }
 
 
@@ -281,14 +281,14 @@ struct Value {
 //         if (std::holds_alternative<String_list>(v_))
 //             return !std::get<String_list>(v_).empty();
 
-        if (std::holds_alternative<Stash_ptr>(v_))
-            return static_cast<bool>(std::get<Stash_ptr>(v_));
+        if (std::holds_alternative<Object_ptr>(v_))
+            return static_cast<bool>(std::get<Object_ptr>(v_));
 
         if (std::holds_alternative<Strong_boolean>(v_))
             return std::get<Strong_boolean>(v_) == Strong_boolean::True;
 
-        if (std::holds_alternative<Value_list>(v_))
-            return !std::get<Value_list>(v_).empty();
+        if (std::holds_alternative<Array>(v_))
+            return !std::get<Array>(v_).empty();
 
         return false;
     }
@@ -301,7 +301,7 @@ struct Value {
 
 
 /**
- * A Mustache node, mainly used in Stash, equals a map node.
+ * A Mustache node, mainly used in Object, equals a map node.
  */
 struct Node {
     using Key = std::string;
@@ -317,27 +317,27 @@ using Node_list = std::vector<Node>;
 
 
 /**
- * A Stash of information for Mustache, equals a map or JSON object.
+ * A Object of information for Mustache, equals a map or JSON object.
  */
-struct Stash {
+struct Object {
 
 
-    Stash() noexcept
+    Object() noexcept
     {
     }
 
 
-    Stash(Node_list nodes) noexcept: nodes_{std::move(nodes)}
+    Object(Node_list nodes) noexcept: nodes_{std::move(nodes)}
     {
     }
 
 
-    Stash(std::initializer_list<Node> nodes) noexcept: nodes_{nodes.begin(), nodes.end()}
+    Object(std::initializer_list<Node> nodes) noexcept: nodes_{nodes.begin(), nodes.end()}
     {
     }
 
 
-//     Stash(std::initializer_list<T> l) noexcept: nodes_{std::move(nodes)}
+//     Object(std::initializer_list<T> l) noexcept: nodes_{std::move(nodes)}
 //     {
 //     }
 
@@ -541,8 +541,8 @@ struct Section {
     const Value* value_;
     std::string::const_iterator begin_;
 
-    const Value_list* value_list_{nullptr};
-    Value_list::const_iterator value_list_it_{};
+    const Array* array_{nullptr};
+    Array::const_iterator array_it_{};
 };
 
 
@@ -551,29 +551,29 @@ using Section_list = std::vector<Section>;
 
 
 
-void shave(std::string& output, const Mustache& mustache, const Stash& stash, const Partials& partials, Section_list& sections);
+void shave(std::string& output, const Mustache& mustache, const Object& object, const Partials& partials, Section_list& sections);
 
 
-inline void shave(std::string& output, const Mustache& mustache, const Stash& stash, const Partials& partials)
+inline void shave(std::string& output, const Mustache& mustache, const Object& object, const Partials& partials)
 {
     Section_list sections;
-    shave(output, mustache, stash, partials, sections);
+    shave(output, mustache, object, partials, sections);
 }
 
 
 
-inline std::string shave(const Mustache& mustache, const Stash& stash, const Partials& partials, Section_list& sections)
+inline std::string shave(const Mustache& mustache, const Object& object, const Partials& partials, Section_list& sections)
 {
     std::string output;
-    shave(output, mustache, stash, partials, sections);
+    shave(output, mustache, object, partials, sections);
     return output;
 }
 
 
-inline std::string shave(const Mustache& mustache, const Stash& stash, const Partials& partials)
+inline std::string shave(const Mustache& mustache, const Object& object, const Partials& partials)
 {
     Section_list sections;
-    return shave(mustache, stash, partials, sections);
+    return shave(mustache, object, partials, sections);
 }
 
 

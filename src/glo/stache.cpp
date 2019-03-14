@@ -69,7 +69,7 @@ glo::stache::Partial load_partial_by_name(std::filesystem::path folder, std::str
 
 
 
-void shave(std::string& output, const Mustache& mustache, const Stash& stash, const Partials& partials, Section_list& sections)
+void shave(std::string& output, const Mustache& mustache, const Object& object, const Partials& partials, Section_list& sections)
 {
     enum State {
         literal,
@@ -98,11 +98,11 @@ void shave(std::string& output, const Mustache& mustache, const Stash& stash, co
 
     auto find_node = [&](std::string_view tag_name){
         for (auto section_it = sections.rbegin(); section_it != sections.rend(); ++section_it)
-            if (const Value* v = section_it->value_; v && v->is_stash_ptr())
-                if (const Node* node = v->get_stash_ptr()->find(tag_name); node)
+            if (const Value* v = section_it->value_; v && v->is_object_ptr())
+                if (const Node* node = v->get_object_ptr()->find(tag_name); node)
                     return node;
 
-        return stash.find(tag_name);
+        return object.find(tag_name);
     };
 
     bool unescaped = false;
@@ -275,11 +275,11 @@ void shave(std::string& output, const Mustache& mustache, const Stash& stash, co
                                 if (!node || !node->value_) {
                                     sections_excluded_from = sections.size();
                                 }
-                                else if (node->value_.is_value_list()) {
-                                    assert(node->value_.get_value_list().size() >= 1);
-                                    sections.back().value_list_ = &node->value_.get_value_list();
-                                    sections.back().value_list_it_ = sections.back().value_list_->begin();
-                                    sections.back().value_ = sections.back().value_list_it_.base();
+                                else if (node->value_.is_array()) {
+                                    assert(node->value_.get_array().size() >= 1);
+                                    sections.back().array_ = &node->value_.get_array();
+                                    sections.back().array_it_ = sections.back().array_->begin();
+                                    sections.back().value_ = sections.back().array_it_.base();
                                 }
 
                                 state = literal;
@@ -317,14 +317,14 @@ void shave(std::string& output, const Mustache& mustache, const Stash& stash, co
                                     throw std::runtime_error{"Unclosed section "s + tag_name};
 
                                 if (!sections_excluded_from &&
-                                    sections.back().value_list_ &&
-                                    sections.back().value_list_it_ != sections.back().value_list_->end()) {
+                                    sections.back().array_ &&
+                                    sections.back().array_it_ != sections.back().array_->end()) {
 
-                                        ++sections.back().value_list_it_;
+                                        ++sections.back().array_it_;
 
-                                        if (sections.back().value_list_it_ != sections.back().value_list_->end()) {
+                                        if (sections.back().array_it_ != sections.back().array_->end()) {
                                             it = sections.back().begin_ - 1;
-                                            sections.back().value_ = sections.back().value_list_it_.base();
+                                            sections.back().value_ = sections.back().array_it_.base();
 
                                             state = literal;
                                             break;
@@ -347,7 +347,7 @@ void shave(std::string& output, const Mustache& mustache, const Stash& stash, co
                                 }
 
                                 if (const Partial* p = partials.find(tag_name)) {
-                                    shave(output, p->mustache_, stash, partials, sections);
+                                    shave(output, p->mustache_, object, partials, sections);
                                 }
 
                                 state = literal;

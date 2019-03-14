@@ -11,13 +11,13 @@ TEST_CASE("Test simple variable output", "[glostache]") {
     
     Mustache mustache{"Hallo {{name}}!"};
     
-    Stash stash;
+    Object object;
     
-    stash["name"] = "Kira";
+    object["name"] = "Kira";
     
     Partials partials;
     
-    CHECK(shave(mustache, stash, partials) == "Hallo Kira!");
+    CHECK(shave(mustache, object, partials) == "Hallo Kira!");
 }
 
 
@@ -28,19 +28,19 @@ TEST_CASE("Test section variable output", "[glostache]") {
     
     Mustache mustache{"{{name}}, {{#test_section}}{{name}} is {{ attr }}{{/test_section}}!"};
     
-    Stash stash;
+    Object object;
     
-    stash["name"] = "Nope";
+    object["name"] = "Nope";
     
-    Stash test_section;
+    Object test_section;
     test_section["name"] = "Kira";
     test_section["attr"] = "coding";
     
-    stash["test_section"] = std::move(test_section);
+    object["test_section"] = std::move(test_section);
     
     Partials partials;
     
-    CHECK(shave(mustache, stash, partials) == "Nope, Kira is coding!");
+    CHECK(shave(mustache, object, partials) == "Nope, Kira is coding!");
 }
 
 
@@ -51,15 +51,15 @@ TEST_CASE("Test inverted section", "[glostache]") {
     
     Mustache mustache{"Hello {{#name}}{{name}}{{/name}}{{^name}}Anonymous{{/name}}!"};
     
-    Stash stash;
+    Object object;
     
-    stash["name"] = "Kira";
+    object["name"] = "Kira";
     
-    Stash anonymous;
+    Object anonymous;
     
     Partials partials;
     
-    CHECK(shave(mustache, stash, partials) == "Hello Kira!");
+    CHECK(shave(mustache, object, partials) == "Hello Kira!");
     CHECK(shave(mustache, anonymous, partials) == "Hello Anonymous!");
 }
 
@@ -71,15 +71,15 @@ TEST_CASE("Test string section with self-dot", "[glostache]") {
     
     Mustache mustache{"Hello {{#name}}{{.}}{{/name}}{{^name}}Anonymous{{/name}}!"};
     
-    Stash stash;
+    Object object;
     
-    stash["name"] = "Kira";
+    object["name"] = "Kira";
     
-    Stash anonymous;
+    Object anonymous;
     
     Partials partials;
     
-    CHECK(shave(mustache, stash, partials) == "Hello Kira!");
+    CHECK(shave(mustache, object, partials) == "Hello Kira!");
     CHECK(shave(mustache, anonymous, partials) == "Hello Anonymous!");
 }
 
@@ -91,11 +91,11 @@ TEST_CASE("Test string section with list", "[glostache]") {
     
     Mustache mustache{"Hello {{#names}}{{.}}, {{/names}}!"};
     
-    Stash stash{{"names", Value_list{"Kira", "Jana"}}};
+    Object object{{"names", Array{"Kira", "Jana"}}};
     
     Partials partials;
     
-    CHECK(shave(mustache, stash, partials) == "Hello Kira, Jana, !");
+    CHECK(shave(mustache, object, partials) == "Hello Kira, Jana, !");
 }
 
 
@@ -106,15 +106,15 @@ TEST_CASE("Test simple partial", "[glostache]") {
     
     Mustache mustache{"Hello {{> name}}!"_mustache};
     
-    Stash stash;
+    Object object;
     
-    stash["name"] = "Kira";
+    object["name"] = "Kira";
     
     Partials partials;
     
     partials["name"] = "{{name}}"_mustache;
     
-    CHECK(shave(mustache, stash, partials) == "Hello Kira!");
+    CHECK(shave(mustache, object, partials) == "Hello Kira!");
 }
 
 
@@ -125,15 +125,15 @@ TEST_CASE("Test dot-notation partial", "[glostache]") {
     
     Mustache mustache{"Hello {{#name}}{{> name}}{{/name}}!"_mustache};
     
-    Stash stash;
+    Object object;
     
-    stash["name"] = "Kira";
+    object["name"] = "Kira";
     
     Partials partials;
     
     partials["name"] = "{{.}}"_mustache;
     
-    CHECK(shave(mustache, stash, partials) == "Hello Kira!");
+    CHECK(shave(mustache, object, partials) == "Hello Kira!");
 }
 
 
@@ -144,13 +144,13 @@ TEST_CASE("Test unescaped variable", "[glostache]") {
     
     Mustache mustache{"Hello {{{name}}}!"_mustache};
     
-    Stash stash;
+    Object object;
     
-    stash["name"] = "Ki<br>ra";
+    object["name"] = "Ki<br>ra";
     
     Partials partials;
     
-    CHECK(shave(mustache, stash, partials) == "Hello Ki<br>ra!");
+    CHECK(shave(mustache, object, partials) == "Hello Ki<br>ra!");
 }
 
 
@@ -165,6 +165,6 @@ TEST_CASE("Test not importing partial when section is false", "[glostache]") {
     
     partials["name"] = "Blubb"_mustache;
     
-    CHECK(shave(mustache, Stash{{"name", "Kira"}}, partials) == "Hello Blubb!");
-    CHECK(shave(mustache, Stash{}, partials) == "Hello !");
+    CHECK(shave(mustache, Object{{"name", "Kira"}}, partials) == "Hello Blubb!");
+    CHECK(shave(mustache, Object{}, partials) == "Hello !");
 }
