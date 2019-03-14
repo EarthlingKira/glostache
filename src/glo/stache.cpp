@@ -14,6 +14,38 @@ using std::string_literals::operator""s;
 // #include <iostream>
 
 
+template<unsigned char delimiter>
+static inline std::string join(const std::vector<std::string>& vector)
+{
+    switch (vector.size()) {
+        case 0:
+            return {""};
+        
+        case 1:
+            return vector.back();
+        
+        default: {
+            assert(vector.size() >= 2);
+            
+            size_t size = vector.size() - 1;
+            for (const std::string& string: vector)
+                size += string.size();
+            
+            std::string out;
+            out.reserve(size);
+            
+            auto it = vector.begin();
+            out = *it;
+            
+            while (++it != vector.end()) {
+                out += *it;
+            }
+            
+            return out;
+        }
+    }
+}
+
 
 
 namespace glo {
@@ -84,8 +116,9 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
     enum Tag_type {
         comment,
         variable,
-        self_variable,
+        implicit_variable,
         section,
+        implicit_section,
         inverted_section,
         close_section,
         partial
@@ -96,17 +129,74 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
 
     size_t inherited_section_count = sections.size();
 
-    auto find_node = [&](std::string_view tag_name){
-        for (auto section_it = sections.rbegin(); section_it != sections.rend(); ++section_it)
-            if (const Value* v = section_it->value_; v && v->is_object_ptr())
-                if (const Node* node = v->get_object_ptr()->find(tag_name); node)
+    std::vector<std::string> tag_name_parts = {""s};
+    
+    auto reset_tag_name = [&]{
+        tag_name_parts = {""s};
+    };
+    
+    auto is_empty_tag_name = [&]{
+        assert(tag_name_parts.size() >= 1);
+        return tag_name_parts.size() == 1 && tag_name_parts.back().empty();
+    };
+    
+    auto last_char_was_dot = [&]{
+        assert(tag_name_parts.size() >= 1);
+        return tag_name_parts.size() >= 2 && tag_name_parts.back().empty();
+    };
+    
+//     auto normalize_tag_name = [&]{
+//         auto it = tag_name_parts.begin();
+//         while (it != tag_name_parts.end()) {
+//             if (it->empty())
+//                 it = tag_name_parts.erase(it);
+//             else
+//                 ++it;
+//         }
+//     };
+    
+    auto full_tag_name = [&]{
+        assert(tag_name_parts.size() >= 1);
+        return join<'.'>(tag_name_parts);
+    };
+    
+    auto is_dotted_tag_name = [&]{
+        assert(tag_name_parts.size() >= 1);
+        return tag_name_parts.size() >= 2;
+    };
+    
+    auto find_node_recursively_in_object = [&](const Object& o) -> const Node*{
+        assert(tag_name_parts.size() >= 1);
+        
+        auto it = tag_name_parts.begin();
+        const Node* node = o.find(*it);
+        
+        while (node && ++it != tag_name_parts.end()) {
+            if (!node->value_.is_object())
+                return nullptr;
+            
+            node = node->value_.get_object().find(*it);
+        }
+        
+        return node;
+    };
+    
+    
+    
+    auto find_node = [&]{
+        
+        for (auto section_it = sections.rbegin(); section_it != sections.rend(); ++section_it) {
+            if (const Value* v = section_it->value_; v && v->is_object()) {
+                if (const Node* node = find_node_recursively_in_object(v->get_object())) {
                     return node;
+                }
+            }
+        }
 
-        return object.find(tag_name);
+        return find_node_recursively_in_object(object);
     };
 
     bool unescaped = false;
-    std::string tag_name;
 
     if (output.empty())
         output.reserve(mustache.string_.size());
@@ -118,6 +208,8 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
         char c = *it;
 
         switch (state) {
+            
+            
             case literal:
                 switch (c) {
 
@@ -134,6 +226,7 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                 }
             break;
 
+            
 
             case waiting_for_second_open_brace:
                 switch (c) {
@@ -153,21 +246,67 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                 }
             break;
 
+            
 
             case waiting_for_tag_type:
                 switch (c) {
-                    case ' ': break;
-                    case '{': if (unescaped) throw std::runtime_error{"Fourth opening brace"}; unescaped = true; break;
-                    case '!': tag_type = comment; state = parsing_comment; break;
-                    case '#': tag_type = section; tag_name.clear(); state = parsing_tag_name; break;
-                    case '^': tag_type = inverted_section; tag_name.clear(); state = parsing_tag_name; break;
-                    case '/': tag_type = close_section; tag_name.clear(); state = parsing_tag_name; break;
-                    case '>': tag_type = partial; tag_name.clear(); state = parsing_tag_name; break;
-                    case '.': tag_type = self_variable; state = waiting_for_first_closing_brace; break;
-                    default: tag_type = variable; tag_name = c; state = parsing_tag_name; break;
+                    
+                    case ' ':
+                        // Ignore whitespace
+                        break;
+                    
+                    case '{':
+                        if (unescaped)
+                            throw std::runtime_error{"Fourth opening brace"};
+                        
+                        unescaped = true;
+                        break;
+                    
+                    case '!':
+                        tag_type = comment;
+                        state = parsing_comment;
+                        break;
+                    
+                    case '#':
+                        tag_type = section;
+                        reset_tag_name();
+                        state = parsing_tag_name;
+                        break;
+                    
+                    case '^':
+                        tag_type = inverted_section;
+                        reset_tag_name();
+                        state = parsing_tag_name;
+                        break;
+                    
+                    case '/':
+                        tag_type = close_section;
+                        reset_tag_name();
+                        state = parsing_tag_name;
+                        break;
+                    
+                    case '>':
+                        tag_type = partial;
+                        reset_tag_name();
+                        state = parsing_tag_name;
+                        break;
+                    
+                    case '.':
+                        tag_type = implicit_variable;
+                        state = waiting_for_first_closing_brace;
+                        break;
+                    
+                    default:
+                        tag_type = variable;
+                        reset_tag_name();
+                        assert(tag_name_parts.size() == 1);
+                        tag_name_parts.back() = c;
+                        state = parsing_tag_name;
+                        break;
                 }
             break;
 
+            
 
             case parsing_comment:
                 switch (c) {
@@ -177,24 +316,59 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
             break;
 
 
+            
             case parsing_tag_name:
                 switch (c) {
-                    case '}': state = waiting_for_second_closing_brace; break;
-                    case ' ': if (!tag_name.empty()) state = waiting_for_first_closing_brace; break;
-                    default: tag_name += c; break;
+                    case '}':
+                        state = waiting_for_second_closing_brace;
+                        break;
+                    
+                    case ' ':
+                        assert(tag_name_parts.size() >= 1);
+                        if (tag_name_parts.size() > 1 || !tag_name_parts.back().empty())
+                            state = waiting_for_first_closing_brace;
+                        break;
+                    
+                    case '.':
+                        assert(tag_name_parts.size() >= 1);
+                        
+                        if (tag_type == section && is_empty_tag_name()) {
+                            tag_type = implicit_section;
+                            state = waiting_for_first_closing_brace;
+                            break;
+                        }
+                        
+                        if (last_char_was_dot())
+                            throw std::runtime_error{"Double dot in tag "s + full_tag_name() + ".[..]"s};
+                        
+                        tag_name_parts.push_back(""s);
+                        break;
+                    
+                    default:
+                        assert(tag_name_parts.size() >= 1);
+                        tag_name_parts.back() += c;
+                        break;
                 }
             break;
 
+            
 
             case waiting_for_first_closing_brace:
                 switch (c) {
-                    case '}': state = waiting_for_second_closing_brace; break;
-                    case ' ': break;
-                    default: throw std::runtime_error{"Unfinished tag "s + tag_name};
+                    case '}':
+                        state = waiting_for_second_closing_brace;
+                        break;
+                        
+                    case ' ':
+                        break;
+                        
+                    default:
+                        throw std::runtime_error{"Unfinished/Invalid tag "s + full_tag_name()};
                 }
             break;
 
 
+            
             case waiting_for_second_closing_brace:
                 switch (c) {
 
@@ -204,16 +378,18 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                             ++it;
                             c = *it;
                             if (c != '}')
-                                throw std::out_of_range{"Missing third closing brace for tag "s + tag_name};
+                                throw std::out_of_range{"Missing third closing brace for tag "s + full_tag_name()};
                         }
 
+                    
+                        
                         switch (tag_type) {
 
                             case comment:
                                 state = literal;
-                            break;
+                                break;
 
-                            case self_variable: {
+                            case implicit_variable: {
 
                                 if (sections_excluded_from) {
                                     state = literal;
@@ -236,13 +412,14 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                             }
 
 
+                            
                             case variable: {
                                 if (sections_excluded_from) {
                                     state = literal;
                                     break;
                                 }
 
-                                const Node* node = find_node(tag_name);
+                                const Node* node = find_node();
 
                                 if (node) {
                                     const Value& v = node->value_;
@@ -257,20 +434,53 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                                 }
 
                                 state = literal;
+                                break;
                             }
-                            break;
 
 
+                            
+                            case implicit_section: {
+
+                                if (sections_excluded_from) {
+                                    sections.push_back({full_tag_name(), nullptr, it + 1});
+                                    state = literal;
+                                    break;
+                                }
+                                
+                                if (sections.empty() || !sections.back().value_) {
+                                    sections.push_back({full_tag_name(), nullptr, it + 1});
+                                    sections_excluded_from = sections.size();
+                                }
+                                else {
+                                    const Value* parent_value = sections.back().value_;
+                                    
+                                    sections.push_back({full_tag_name(), parent_value, it + 1});
+                                    
+                                    if (sections.back().value_->is_array()) {
+                                    
+                                        assert(sections.back().value_->get_array().size() >= 1);
+                                        sections.back().array_ = &sections.back().value_->get_array();
+                                        sections.back().array_it_ = sections.back().array_->begin();
+                                        sections.back().value_ = sections.back().array_it_.base();
+                                    }
+                                }
+                                
+                                state = literal;
+                                break;
+                            }
+
+
+                            
                             case section: {
 
                                 if (sections_excluded_from) {
-                                    sections.push_back({std::move(tag_name), nullptr, it + 1});
+                                    sections.push_back({full_tag_name(), nullptr, it + 1});
                                     state = literal;
                                     break;
                                 }
 
-                                const Node* node = find_node(tag_name);
-                                sections.push_back({std::move(tag_name), node ? &node->value_ : nullptr, it + 1});
+                                const Node* node = find_node();
+                                sections.push_back({full_tag_name(), node ? &node->value_ : nullptr, it + 1});
 
                                 if (!node || !node->value_) {
                                     sections_excluded_from = sections.size();
@@ -283,38 +493,40 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                                 }
 
                                 state = literal;
+                                break;
                             }
-                            break;
 
 
+                            
                             case inverted_section: {
 
                                 if (sections_excluded_from) {
-                                    sections.push_back({std::move(tag_name), nullptr, it + 1});
+                                    sections.push_back({full_tag_name(), nullptr, it + 1});
                                     state = literal;
                                     break;
                                 }
 
-                                const Node* node = find_node(tag_name);
-                                sections.push_back({std::move(tag_name), nullptr, it + 1});
+                                const Node* node = find_node();
+                                sections.push_back({full_tag_name(), nullptr, it + 1});
 
                                 if (node && node->value_)
                                     sections_excluded_from = sections.size();
 
                                 state = literal;
+                                break;
                             }
-                            break;
 
 
+                            
                             case close_section:
 
                                 if (sections.size() <= inherited_section_count)
-                                    throw std::runtime_error{"Closing one too many section "s + tag_name};
+                                    throw std::runtime_error{"Closing one too many section "s + full_tag_name()};
 
                                 assert(!sections.empty());
 
-                                if (sections.back().name_ != tag_name)
-                                    throw std::runtime_error{"Unclosed section "s + tag_name};
+                                if (sections.back().name_ != full_tag_name())
+                                    throw std::runtime_error{"Unclosed section "s + full_tag_name()};
 
                                 if (!sections_excluded_from &&
                                     sections.back().array_ &&
@@ -337,8 +549,10 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                                     sections_excluded_from = 0;
 
                                 state = literal;
-                            break;
+                                break;
 
+                                
+                                
                             case partial:
 
                                 if (sections_excluded_from) {
@@ -346,19 +560,19 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                                     break;
                                 }
 
-                                if (const Partial* p = partials.find(tag_name)) {
+                                if (const Partial* p = partials.find(full_tag_name())) {
                                     shave(output, p->mustache_, object, partials, sections);
                                 }
 
                                 state = literal;
-                            break;
+                                break;
                         }
 
                         unescaped = false;
 
                     break;
 
-                    default: throw std::runtime_error{"Unfinished tag "s + tag_name};
+                    default: throw std::runtime_error{"Unfinished tag "s + full_tag_name()};
                 }
             break;
         }
@@ -379,12 +593,12 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
             break;
 
 
-            case waiting_for_tag_type:  [[fallthrough]];
+            case waiting_for_tag_type: [[fallthrough]];
             case parsing_comment: [[fallthrough]];
             case parsing_tag_name: [[fallthrough]];
             case waiting_for_first_closing_brace: [[fallthrough]];
             case waiting_for_second_closing_brace:
-                throw std::runtime_error{"Unfinished tag "s + tag_name};
+                throw std::runtime_error{"Unfinished tag "s + full_tag_name()};
             break;
     }
 

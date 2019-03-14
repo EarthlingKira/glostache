@@ -62,8 +62,8 @@ struct Value {
     {
         if (v.is_string())
             v_ = v.get_string();
-        else if (v.is_object_ptr())
-            v_ = std::make_unique<Object>(*v.get_object_ptr());
+        else if (v.is_object())
+            v_ = std::make_unique<Object>(v.get_object());
         else if (v.is_bool())
             v_ = v.get_strong_bool();
         else if (v.is_array())
@@ -74,8 +74,8 @@ struct Value {
     {
         if (v.is_string())
             v_ = v.get_string();
-        else if (v.is_object_ptr())
-            v_ = std::make_unique<Object>(*v.get_object_ptr());
+        else if (v.is_object())
+            v_ = std::make_unique<Object>(v.get_object());
         else if (v.is_bool())
             v_ = v.get_strong_bool();
         else if (v.is_array())
@@ -93,6 +93,38 @@ struct Value {
     }
 
     Value(const char* s) noexcept: v_{std::string{s}}
+    {
+    }
+
+    Value(uint8_t v) noexcept: v_{std::to_string(v)}
+    {
+    }
+
+    Value(int8_t v) noexcept: v_{std::to_string(v)}
+    {
+    }
+
+    Value(uint16_t v) noexcept: v_{std::to_string(v)}
+    {
+    }
+
+    Value(int16_t v) noexcept: v_{std::to_string(v)}
+    {
+    }
+
+    Value(uint32_t v) noexcept: v_{std::to_string(v)}
+    {
+    }
+
+    Value(int32_t v) noexcept: v_{std::to_string(v)}
+    {
+    }
+
+    Value(uint64_t v) noexcept: v_{std::to_string(v)}
+    {
+    }
+
+    Value(int64_t v) noexcept: v_{std::to_string(v)}
     {
     }
 
@@ -139,14 +171,57 @@ struct Value {
         return *this;
     }
 
+    Value& operator=(uint8_t v) noexcept
+    {
+        return *this = std::to_string(v);
+    }
+
+    Value& operator=(int8_t v) noexcept
+    {
+        return *this = std::to_string(v);
+    }
+
+    Value& operator=(uint16_t v) noexcept
+    {
+        return *this = std::to_string(v);
+    }
+
+    Value& operator=(int16_t v) noexcept
+    {
+        return *this = std::to_string(v);
+    }
+
+    Value& operator=(uint32_t v) noexcept
+    {
+        return *this = std::to_string(v);
+    }
+
+    Value& operator=(int32_t v) noexcept
+    {
+        return *this = std::to_string(v);
+    }
+
+    Value& operator=(uint64_t v) noexcept
+    {
+        return *this = std::to_string(v);
+    }
+
+    Value& operator=(int64_t v) noexcept
+    {
+        return *this = std::to_string(v);
+    }
+
 //     Value& operator=(String_list v) noexcept
 //     {
 //         v_ = std::move(v);
 //         return *this;
 //     }
 
-    Value& operator=(Object_ptr v) noexcept
+    Value& operator=(Object_ptr v)
     {
+        if (!v)
+            throw std::runtime_error{"Please do not assign an empty object_ptr"};
+        
         v_ = std::move(v);
         return *this;
     }
@@ -217,14 +292,14 @@ struct Value {
 
 
 
-    bool is_object_ptr() const noexcept
+    bool is_object() const noexcept
     {
         return std::holds_alternative<Object_ptr>(v_);
     }
 
-    const Object_ptr& get_object_ptr() const
+    const Object& get_object() const
     {
-        return std::get<Object_ptr>(v_);
+        return *std::get<Object_ptr>(v_);
     }
 
     Object_ptr& get_object_ptr_ref()

@@ -3,11 +3,12 @@
 
 #include "glo/stache.h"
 
+    
+using namespace glo::stache;
+
+
 
 TEST_CASE("Test simple variable output", "[glostache]") {
-    
-    using namespace glo::stache;
-    
     
     Mustache mustache{"Hallo {{name}}!"};
     
@@ -22,9 +23,6 @@ TEST_CASE("Test simple variable output", "[glostache]") {
 
 
 TEST_CASE("Test section variable output", "[glostache]") {
-    
-    using namespace glo::stache;
-    
     
     Mustache mustache{"{{name}}, {{#test_section}}{{name}} is {{ attr }}{{/test_section}}!"};
     
@@ -46,9 +44,6 @@ TEST_CASE("Test section variable output", "[glostache]") {
 
 TEST_CASE("Test inverted section", "[glostache]") {
     
-    using namespace glo::stache;
-    
-    
     Mustache mustache{"Hello {{#name}}{{name}}{{/name}}{{^name}}Anonymous{{/name}}!"};
     
     Object object;
@@ -65,8 +60,6 @@ TEST_CASE("Test inverted section", "[glostache]") {
 
 
 TEST_CASE("Test string section with self-dot", "[glostache]") {
-    
-    using namespace glo::stache;
     
     
     Mustache mustache{"Hello {{#name}}{{.}}{{/name}}{{^name}}Anonymous{{/name}}!"};
@@ -86,8 +79,6 @@ TEST_CASE("Test string section with self-dot", "[glostache]") {
 
 TEST_CASE("Test string section with list", "[glostache]") {
     
-    using namespace glo::stache;
-    
     
     Mustache mustache{"Hello {{#names}}{{.}}, {{/names}}!"};
     
@@ -100,8 +91,6 @@ TEST_CASE("Test string section with list", "[glostache]") {
 
 
 TEST_CASE("Test simple partial", "[glostache]") {
-    
-    using namespace glo::stache;
     
     
     Mustache mustache{"Hello {{> name}}!"_mustache};
@@ -120,9 +109,6 @@ TEST_CASE("Test simple partial", "[glostache]") {
 
 TEST_CASE("Test dot-notation partial", "[glostache]") {
     
-    using namespace glo::stache;
-    
-    
     Mustache mustache{"Hello {{#name}}{{> name}}{{/name}}!"_mustache};
     
     Object object;
@@ -139,8 +125,6 @@ TEST_CASE("Test dot-notation partial", "[glostache]") {
 
 TEST_CASE("Test unescaped variable", "[glostache]") {
     
-    using namespace glo::stache;
-    
     
     Mustache mustache{"Hello {{{name}}}!"_mustache};
     
@@ -156,8 +140,6 @@ TEST_CASE("Test unescaped variable", "[glostache]") {
 
 TEST_CASE("Test not importing partial when section is false", "[glostache]") {
     
-    using namespace glo::stache;
-    
     
     Mustache mustache{"Hello {{#name}}{{> name}}{{/name}}!"_mustache};
     
@@ -167,4 +149,36 @@ TEST_CASE("Test not importing partial when section is false", "[glostache]") {
     
     CHECK(shave(mustache, Object{{"name", "Kira"}}, partials) == "Hello Blubb!");
     CHECK(shave(mustache, Object{}, partials) == "Hello !");
+}
+
+
+
+TEST_CASE("Implicit Iterator - Array", "[glostache, mustache_spec]") {
+     CHECK(shave(R"("{{#list}}({{#.}}{{.}}{{/.}}){{/list}}")"_mustache,
+                 {{"list", Array{Array{1, 2, 3}, Array{"a", "b", "c"}}}},
+                 {}) == R"~("(123)(abc)")~");
+}
+
+
+
+TEST_CASE("Dotted Names - Truthy", "[glostache, mustache_spec]") {
+     CHECK(shave(R"("{{#a.b.c}}Here{{/a.b.c}}" == "Here")"_mustache,
+                 {{"a", Object{{"b", Object{{"c", true}}}}}},
+                 {}) == R"("Here" == "Here")");
+}
+
+
+
+TEST_CASE("Dotted Names - Falsey", "[glostache, mustache_spec]") {
+     CHECK(shave(R"("{{#a.b.c}}Here{{/a.b.c}}" == "")"_mustache,
+                 {{"a", Object{{"b", Object{{"c", false}}}}}},
+                 {}) == R"("" == "")");
+}
+
+
+
+TEST_CASE("Dotted Names - Broken Chains", "[glostache, mustache_spec]") {
+     CHECK(shave(R"("{{#a.b.c}}Here{{/a.b.c}}" == "")"_mustache,
+                 {{"a", Object{}}},
+                 {}) == R"("" == "")");
 }
