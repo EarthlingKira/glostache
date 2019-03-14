@@ -9,12 +9,8 @@ add_compile_options(
     -march=native
 )
 
-add_executable(glostache_benchmark
+add_executable(glostache_benchmark EXCLUDE_FROM_ALL
     main.cpp
 )
     
 target_link_libraries(glostache_benchmark PRIVATE glostache benchmark mstch bustache)
-
-
-install(TARGETS glostache_benchmark
-        RUNTIME DESTINATION bin)
