@@ -154,7 +154,7 @@ TEST_CASE("Test not importing partial when section is false", "[glostache]") {
 
 
 TEST_CASE("Implicit Iterator - Array", "[glostache, mustache_spec]") {
-     CHECK(shave(R"("{{#list}}({{#.}}{{.}}{{/.}}){{/list}}")"_mustache,
+    CHECK(shave(R"("{{#list}}({{#.}}{{.}}{{/.}}){{/list}}")"_mustache,
                  {{"list", Array{Array{1, 2, 3}, Array{"a", "b", "c"}}}},
                  {}) == R"~("(123)(abc)")~");
 }
@@ -162,7 +162,7 @@ TEST_CASE("Implicit Iterator - Array", "[glostache, mustache_spec]") {
 
 
 TEST_CASE("Dotted Names - Truthy", "[glostache, mustache_spec]") {
-     CHECK(shave(R"("{{#a.b.c}}Here{{/a.b.c}}" == "Here")"_mustache,
+    CHECK(shave(R"("{{#a.b.c}}Here{{/a.b.c}}" == "Here")"_mustache,
                  {{"a", Object{{"b", Object{{"c", true}}}}}},
                  {}) == R"("Here" == "Here")");
 }
@@ -170,7 +170,7 @@ TEST_CASE("Dotted Names - Truthy", "[glostache, mustache_spec]") {
 
 
 TEST_CASE("Dotted Names - Falsey", "[glostache, mustache_spec]") {
-     CHECK(shave(R"("{{#a.b.c}}Here{{/a.b.c}}" == "")"_mustache,
+    CHECK(shave(R"("{{#a.b.c}}Here{{/a.b.c}}" == "")"_mustache,
                  {{"a", Object{{"b", Object{{"c", false}}}}}},
                  {}) == R"("" == "")");
 }
@@ -178,7 +178,77 @@ TEST_CASE("Dotted Names - Falsey", "[glostache, mustache_spec]") {
 
 
 TEST_CASE("Dotted Names - Broken Chains", "[glostache, mustache_spec]") {
-     CHECK(shave(R"("{{#a.b.c}}Here{{/a.b.c}}" == "")"_mustache,
+    CHECK(shave(R"("{{#a.b.c}}Here{{/a.b.c}}" == "")"_mustache,
                  {{"a", Object{}}},
                  {}) == R"("" == "")");
+}
+
+
+
+TEST_CASE("Standalone Lines - Standalone lines should be removed from the template.", "[glostache, mustache_spec]") {
+    auto t = R"(|
+| This Is
+{{#boolean}}
+|
+{{/boolean}}
+| A Line)"_mustache;
+    Object o{{"boolean", true}};
+    
+    CHECK(shave(t, o) == R"(|
+| This Is
+|
+| A Line)");
+}
+
+
+
+TEST_CASE("Indented Standalone Lines - Indented standalone lines should be removed from the template.", "[glostache, mustache_spec]") {
+    auto t = R"(|
+| This Is
+  {{#boolean}}
+|
+  {{/boolean}}
+| A Line)"_mustache;
+    Object o{{"boolean", true}};
+    
+    CHECK(shave(t, o) == R"(|
+| This Is
+|
+| A Line)");
+}
+
+
+
+TEST_CASE(R"(Standalone Line Endings - "\r\n" should be considered a newline for standalone tags.)", "[glostache, mustache_spec]") {
+    auto t = "|\r\n{{#boolean}}\r\n{{/boolean}}\r\n|"_mustache;
+    Object o{{"boolean", true}};
+    
+    CHECK(shave(t, o) == "|\r\n|");
+}
+
+
+
+TEST_CASE("Standalone Without Previous Line - Standalone tags should not require a newline to precede them.", "[glostache, mustache_spec]") {
+    auto t = "  {{#boolean}}\n#{{/boolean}}\n/"_mustache;
+    Object o{{"boolean", true}};
+    
+    CHECK(shave(t, o) == "#\n/");
+}
+
+
+
+TEST_CASE("Standalone Without Newline - Standalone tags should not require a newline to follow them.", "[glostache, mustache_spec]") {
+    auto t = "#{{#boolean}}\n/\n  {{/boolean}}"_mustache;
+    Object o{{"boolean", true}};
+    
+    CHECK(shave(t, o) == "#\n/\n");
+}
+
+
+
+TEST_CASE("Padding - Superfluous in-tag whitespace should be ignored.", "[glostache, mustache_spec]") {
+    auto t = "|{{# boolean }}={{/ boolean }}|"_mustache;
+    Object o{{"boolean", true}};
+    
+    CHECK(shave(t, o) == "|=|");
 }

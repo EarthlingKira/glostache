@@ -136,11 +136,48 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
     std::string_view tag_name;
     std::vector<std::string_view> tag_name_parts = {};
     
+    size_t whitespace_count_on_line = 0;
+    size_t other_char_count_on_line = 0;
+    size_t section_tag_count_on_line = 0;
+    size_t non_section_tag_count_on_line = 0;
+    
     auto reset_tag_name = [&]{
         tag_name = {};
         tag_name_parts = {};
         tag_name_begin = nullptr;
         tag_name_part_begin = nullptr;
+    };
+    
+    auto new_line = [&]{
+        if (!sections_excluded_from && other_char_count_on_line == 0 && section_tag_count_on_line == 1 && non_section_tag_count_on_line == 0) {
+            output.resize(output.size() - whitespace_count_on_line);
+        }
+        else {
+            output += '\n';
+        }
+        whitespace_count_on_line = 0;
+        other_char_count_on_line = 0;
+        section_tag_count_on_line = 0;
+        non_section_tag_count_on_line = 0;
+    };
+    
+    auto add_char = [&](char c){
+        switch (c) {
+            case '\r': [[fallthrough]];
+            case ' ':
+                output += c;
+                ++whitespace_count_on_line;
+                break;
+            
+            case '\n':
+                new_line();
+                break;
+            
+            default:
+                output += c;
+                ++other_char_count_on_line;
+                break;
+        }
     };
     
     auto find_node_recursively_in_object = [&](const Object& o) -> const Node*{
@@ -217,7 +254,7 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                         if (sections_excluded_from)
                             break;
 
-                        output += c;
+                        add_char(c);
                     break;
                 }
             break;
@@ -234,8 +271,8 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                         if (sections_excluded_from)
                             break;
 
-                        output += '{';
-                        output += c;
+                        add_char('{');
+                        add_char(c);
 
                         state = literal;
                     break;
@@ -336,6 +373,10 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                         }
                         break;
                         
+                    case '\r': [[fallthrough]];
+                    case '\n':
+                        throw std::runtime_error{"Unfinished/Invalid tag"};
+                        
                     case ' ':
                         break;
                     
@@ -371,6 +412,10 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                         tag_name_parts.push_back({tag_name_part_begin, static_cast<size_t>(it.base() - tag_name_part_begin)});
                         tag_name_part_begin = it.base() + 1;
                         break;
+                        
+                    case '\r': [[fallthrough]];
+                    case '\n':
+                        throw std::runtime_error{"Unfinished/Invalid tag"};
                     
                     default:
                         break;
@@ -412,6 +457,8 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                         switch (tag_type) {
 
                             case comment:
+                                ++non_section_tag_count_on_line;
+                                
                                 state = literal;
                                 break;
 
@@ -421,6 +468,8 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                                     state = literal;
                                     break;
                                 }
+                                
+                                ++non_section_tag_count_on_line;
 
                                 if (!sections.empty()) {
                                     if (sections.back().value_ && sections.back().value_->is_string()) {
@@ -444,6 +493,8 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                                     state = literal;
                                     break;
                                 }
+                                
+                                ++non_section_tag_count_on_line;
 
                                 const Node* node = find_node();
 
@@ -472,6 +523,8 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                                     state = literal;
                                     break;
                                 }
+                                
+                                ++section_tag_count_on_line;
                                 
                                 if (sections.empty() || !sections.back().value_) {
                                     sections.push_back({tag_name, nullptr, it + 1});
@@ -504,6 +557,8 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                                     state = literal;
                                     break;
                                 }
+                                
+                                ++section_tag_count_on_line;
 
                                 const Node* node = find_node();
                                 sections.push_back({tag_name, node ? &node->value_ : nullptr, it + 1});
@@ -531,6 +586,8 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                                     state = literal;
                                     break;
                                 }
+                                
+                                ++section_tag_count_on_line;
 
                                 const Node* node = find_node();
                                 sections.push_back({tag_name, nullptr, it + 1});
@@ -550,6 +607,8 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                                     throw std::runtime_error{"Closing one too many section"s};
 
                                 assert(!sections.empty());
+                                
+                                ++section_tag_count_on_line;
 
                                 if (sections.back().name_ != tag_name)
                                     throw std::runtime_error{"Unclosed section"s};
@@ -585,6 +644,8 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                                     state = literal;
                                     break;
                                 }
+                                
+                                ++non_section_tag_count_on_line;
 
                                 if (const Partial* p = partials.find(tag_name)) {
                                     shave(output, p->mustache_, object, partials, sections);
@@ -598,7 +659,8 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
 
                     break;
 
-                    default: throw std::runtime_error{"Unfinished tag"s};
+                    default:
+                        throw std::runtime_error{"Unfinished tag"s};
                 }
             break;
         }
@@ -611,6 +673,9 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
 
 
             case literal:
+                if (!sections_excluded_from && other_char_count_on_line == 0 && section_tag_count_on_line == 1 && non_section_tag_count_on_line == 0 && whitespace_count_on_line >= 1) {
+                    output.resize(output.size() - whitespace_count_on_line);
+                }
             break;
 
 
