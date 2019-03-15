@@ -219,6 +219,25 @@ TEST_CASE("Indented Standalone Lines - Indented standalone lines should be remov
 
 
 
+TEST_CASE("(Custom) Indented Standalone Lines - Indented standalone lines should be removed from the template on lists", "[glostache]") {
+    auto t = R"(|
+| This Is
+  {{#list}}
+|
+  {{/list}}
+| A Line)"_mustache;
+    Object o{{"list", Array{1, 2, 3}}};
+    
+    CHECK(shave(t, o) == R"(|
+| This Is
+|
+|
+|
+| A Line)");
+}
+
+
+
 TEST_CASE(R"(Standalone Line Endings - "\r\n" should be considered a newline for standalone tags.)", "[glostache, mustache_spec]") {
     auto t = "|\r\n{{#boolean}}\r\n{{/boolean}}\r\n|"_mustache;
     Object o{{"boolean", true}};
