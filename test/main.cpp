@@ -185,6 +185,33 @@ TEST_CASE("Dotted Names - Broken Chains", "[glostache, mustache_spec]") {
 
 
 
+TEST_CASE("Surrounding Whitespace - Sections should not alter surrounding whitespace.", "[glostache, mustache_spec]") {
+    auto t = " | {{#boolean}}\t|\t{{/boolean}} | \n"_mustache;
+    Object o{{"boolean", true}};
+    
+    CHECK(shave(t, o) == " | \t|\t | \n");
+}
+
+
+
+TEST_CASE("Internal Whitespace - Sections should not alter internal whitespace.", "[glostache, mustache_spec]") {
+    auto t = " | {{#boolean}} {{! Important Whitespace }}\n {{/boolean}} | \n"_mustache;
+    Object o{{"boolean", true}};
+    
+    CHECK(shave(t, o) == " |  \n  | \n");
+}
+
+
+
+TEST_CASE("Indented Inline Sections - Single-line sections should not alter surrounding whitespace.", "[glostache, mustache_spec]") {
+    auto t = " {{#boolean}}YES{{/boolean}}\n {{#boolean}}GOOD{{/boolean}}\n"_mustache;
+    Object o{{"boolean", true}};
+    
+    CHECK(shave(t, o) == " YES\n GOOD\n");
+}
+
+
+
 TEST_CASE("Standalone Lines - Standalone lines should be removed from the template.", "[glostache, mustache_spec]") {
     auto t = R"(|
 | This Is
