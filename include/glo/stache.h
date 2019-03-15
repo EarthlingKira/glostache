@@ -636,6 +636,23 @@ inline void shave(std::string& output, const Mustache& mustache, const Object& o
 }
 
 
+inline void shave(std::string& output, const Mustache& mustache, const Object& object)
+{
+    Partials partials;
+    Section_list sections;
+    shave(output, mustache, object, partials, sections);
+}
+
+
+inline void shave(std::string& output, const Mustache& mustache)
+{
+    Object object;
+    Partials partials;
+    Section_list sections;
+    shave(output, mustache, object, partials, sections);
+}
+
+
 
 inline std::string shave(const Mustache& mustache, const Object& object, const Partials& partials, Section_list& sections)
 {
@@ -647,6 +664,23 @@ inline std::string shave(const Mustache& mustache, const Object& object, const P
 
 inline std::string shave(const Mustache& mustache, const Object& object, const Partials& partials)
 {
+    Section_list sections;
+    return shave(mustache, object, partials, sections);
+}
+
+
+inline std::string shave(const Mustache& mustache, const Object& object)
+{
+    Partials partials;
+    Section_list sections;
+    return shave(mustache, object, partials, sections);
+}
+
+
+inline std::string shave(const Mustache& mustache)
+{
+    Object object;
+    Partials partials;
     Section_list sections;
     return shave(mustache, object, partials, sections);
 }
