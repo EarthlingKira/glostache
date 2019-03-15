@@ -236,7 +236,7 @@ static void glostache_usage(benchmark::State& state)
     }
 }
 
-BENCHMARK(basic_usage_glostache);
+// BENCHMARK(basic_usage_glostache);
 
 BENCHMARK(glostache_usage);
 
@@ -455,7 +455,7 @@ static void mstch_usage(benchmark::State& state)
     }
 }
 
-BENCHMARK(basic_usage_mstch);
+// BENCHMARK(basic_usage_mstch);
 
 BENCHMARK(mstch_usage);
 

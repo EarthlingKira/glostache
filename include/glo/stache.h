@@ -612,7 +612,7 @@ glo::stache::Partial load_partial_by_name(std::filesystem::path folder, std::str
 
 
 struct Section {
-    std::string name_;
+    std::string_view name_;
     const Value* value_;
     std::string::const_iterator begin_;
 

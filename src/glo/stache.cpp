@@ -108,6 +108,7 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
         waiting_for_second_open_brace,
         waiting_for_tag_type,
         parsing_comment,
+        waiting_for_tag_name,
         parsing_tag_name,
         waiting_for_first_closing_brace,
         waiting_for_second_closing_brace
@@ -129,40 +130,17 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
 
     size_t inherited_section_count = sections.size();
 
-    std::vector<std::string> tag_name_parts = {""s};
+    const char* tag_name_begin = nullptr;
+    const char* tag_name_part_begin = nullptr;
+    
+    std::string_view tag_name;
+    std::vector<std::string_view> tag_name_parts = {};
     
     auto reset_tag_name = [&]{
-        tag_name_parts = {""s};
-    };
-    
-    auto is_empty_tag_name = [&]{
-        assert(tag_name_parts.size() >= 1);
-        return tag_name_parts.size() == 1 && tag_name_parts.back().empty();
-    };
-    
-    auto last_char_was_dot = [&]{
-        assert(tag_name_parts.size() >= 1);
-        return tag_name_parts.size() >= 2 && tag_name_parts.back().empty();
-    };
-    
-//     auto normalize_tag_name = [&]{
-//         auto it = tag_name_parts.begin();
-//         while (it != tag_name_parts.end()) {
-//             if (it->empty())
-//                 it = tag_name_parts.erase(it);
-//             else
-//                 ++it;
-//         }
-//     };
-    
-    auto full_tag_name = [&]{
-        assert(tag_name_parts.size() >= 1);
-        return join<'.'>(tag_name_parts);
-    };
-    
-    auto is_dotted_tag_name = [&]{
-        assert(tag_name_parts.size() >= 1);
-        return tag_name_parts.size() >= 2;
+        tag_name = {};
+        tag_name_parts = {};
+        tag_name_begin = nullptr;
+        tag_name_part_begin = nullptr;
     };
     
     auto find_node_recursively_in_object = [&](const Object& o) -> const Node*{
@@ -185,15 +163,33 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
     
     auto find_node = [&]{
         
-        for (auto section_it = sections.rbegin(); section_it != sections.rend(); ++section_it) {
-            if (const Value* v = section_it->value_; v && v->is_object()) {
-                if (const Node* node = find_node_recursively_in_object(v->get_object())) {
-                    return node;
+        switch (tag_name_parts.size()) {
+            
+            case 1:
+                for (auto section_it = sections.rbegin(); section_it != sections.rend(); ++section_it) {
+                    if (const Value* v = section_it->value_; v && v->is_object()) {
+                        if (const Node* node = v->get_object().find(tag_name)) {
+                            return node;
+                        }
+                    }
                 }
-            }
-        }
 
-        return find_node_recursively_in_object(object);
+                return object.find(tag_name);
+                break;
+                
+            default:
+        
+                for (auto section_it = sections.rbegin(); section_it != sections.rend(); ++section_it) {
+                    if (const Value* v = section_it->value_; v && v->is_object()) {
+                        if (const Node* node = find_node_recursively_in_object(v->get_object())) {
+                            return node;
+                        }
+                    }
+                }
+
+                return find_node_recursively_in_object(object);
+                break;
+        }
     };
 
     bool unescaped = false;
@@ -269,38 +265,35 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                     
                     case '#':
                         tag_type = section;
-                        reset_tag_name();
-                        state = parsing_tag_name;
+                        state = waiting_for_tag_name;
                         break;
                     
                     case '^':
                         tag_type = inverted_section;
-                        reset_tag_name();
-                        state = parsing_tag_name;
+                        state = waiting_for_tag_name;
                         break;
                     
                     case '/':
                         tag_type = close_section;
-                        reset_tag_name();
-                        state = parsing_tag_name;
+                        state = waiting_for_tag_name;
                         break;
                     
                     case '>':
                         tag_type = partial;
-                        reset_tag_name();
-                        state = parsing_tag_name;
+                        state = waiting_for_tag_name;
                         break;
                     
                     case '.':
                         tag_type = implicit_variable;
+                        reset_tag_name();
+                        tag_name = {it.base(), 1};
                         state = waiting_for_first_closing_brace;
                         break;
                     
                     default:
                         tag_type = variable;
                         reset_tag_name();
-                        assert(tag_name_parts.size() == 1);
-                        tag_name_parts.back() = c;
+                        tag_name_part_begin = tag_name_begin = it.base();
                         state = parsing_tag_name;
                         break;
                 }
@@ -314,39 +307,72 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                     default: break;
                 }
             break;
+            
+            
+            
+            case waiting_for_tag_name:
+                switch (c) {
+                        
+                    case '}':
+                        throw std::runtime_error{"Unfinished/Invalid tag"};
+                        
+                    case '.':
+                        switch (tag_type) {
+                            case section:
+                                tag_type = implicit_section;
+                                reset_tag_name();
+                                tag_name = {it.base(), 1};
+                                state = waiting_for_first_closing_brace;
+                                break;
+                                
+                            case close_section:
+                                reset_tag_name();
+                                tag_name = {it.base(), 1};
+                                state = waiting_for_first_closing_brace;
+                                break;
+                            
+                            default: 
+                                throw std::runtime_error{"Unfinished/Invalid tag"};
+                        }
+                        break;
+                        
+                    case ' ':
+                        break;
+                    
+                    default:
+                        reset_tag_name();
+                        tag_name_part_begin = tag_name_begin = it.base();
+                        state = parsing_tag_name;
+                        break;
+                }
+            break;
 
 
             
             case parsing_tag_name:
                 switch (c) {
                     case '}':
+                        tag_name = {tag_name_begin, static_cast<size_t>(it.base() - tag_name_begin)};
+                        tag_name_parts.push_back({tag_name_part_begin, static_cast<size_t>(it.base() - tag_name_part_begin)});
                         state = waiting_for_second_closing_brace;
                         break;
                     
                     case ' ':
-                        assert(tag_name_parts.size() >= 1);
-                        if (tag_name_parts.size() > 1 || !tag_name_parts.back().empty())
-                            state = waiting_for_first_closing_brace;
+                        tag_name = {tag_name_begin, static_cast<size_t>(it.base() - tag_name_begin)};
+                        tag_name_parts.push_back({tag_name_part_begin, static_cast<size_t>(it.base() - tag_name_part_begin)});
+                        state = waiting_for_first_closing_brace;
                         break;
                     
                     case '.':
-                        assert(tag_name_parts.size() >= 1);
                         
-                        if (tag_type == section && is_empty_tag_name()) {
-                            tag_type = implicit_section;
-                            state = waiting_for_first_closing_brace;
-                            break;
-                        }
-                        
-                        if (last_char_was_dot())
-                            throw std::runtime_error{"Double dot in tag "s + full_tag_name() + ".[..]"s};
-                        
-                        tag_name_parts.push_back(""s);
+                        if (tag_name_part_begin == it.base())
+                            throw std::runtime_error{"Double dot in tag"s};
+                            
+                        tag_name_parts.push_back({tag_name_part_begin, static_cast<size_t>(it.base() - tag_name_part_begin)});
+                        tag_name_part_begin = it.base() + 1;
                         break;
                     
                     default:
-                        assert(tag_name_parts.size() >= 1);
-                        tag_name_parts.back() += c;
                         break;
                 }
             break;
@@ -363,7 +389,7 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                         break;
                         
                     default:
-                        throw std::runtime_error{"Unfinished/Invalid tag "s + full_tag_name()};
+                        throw std::runtime_error{"Unfinished/Invalid tag"s};
                 }
             break;
 
@@ -378,7 +404,7 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                             ++it;
                             c = *it;
                             if (c != '}')
-                                throw std::out_of_range{"Missing third closing brace for tag "s + full_tag_name()};
+                                throw std::out_of_range{"Missing third closing brace for tag"s};
                         }
 
                     
@@ -442,19 +468,19 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                             case implicit_section: {
 
                                 if (sections_excluded_from) {
-                                    sections.push_back({full_tag_name(), nullptr, it + 1});
+                                    sections.push_back({tag_name, nullptr, it + 1});
                                     state = literal;
                                     break;
                                 }
                                 
                                 if (sections.empty() || !sections.back().value_) {
-                                    sections.push_back({full_tag_name(), nullptr, it + 1});
+                                    sections.push_back({tag_name, nullptr, it + 1});
                                     sections_excluded_from = sections.size();
                                 }
                                 else {
                                     const Value* parent_value = sections.back().value_;
                                     
-                                    sections.push_back({full_tag_name(), parent_value, it + 1});
+                                    sections.push_back({tag_name, parent_value, it + 1});
                                     
                                     if (sections.back().value_->is_array()) {
                                     
@@ -474,13 +500,13 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                             case section: {
 
                                 if (sections_excluded_from) {
-                                    sections.push_back({full_tag_name(), nullptr, it + 1});
+                                    sections.push_back({tag_name, nullptr, it + 1});
                                     state = literal;
                                     break;
                                 }
 
                                 const Node* node = find_node();
-                                sections.push_back({full_tag_name(), node ? &node->value_ : nullptr, it + 1});
+                                sections.push_back({tag_name, node ? &node->value_ : nullptr, it + 1});
 
                                 if (!node || !node->value_) {
                                     sections_excluded_from = sections.size();
@@ -501,13 +527,13 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                             case inverted_section: {
 
                                 if (sections_excluded_from) {
-                                    sections.push_back({full_tag_name(), nullptr, it + 1});
+                                    sections.push_back({tag_name, nullptr, it + 1});
                                     state = literal;
                                     break;
                                 }
 
                                 const Node* node = find_node();
-                                sections.push_back({full_tag_name(), nullptr, it + 1});
+                                sections.push_back({tag_name, nullptr, it + 1});
 
                                 if (node && node->value_)
                                     sections_excluded_from = sections.size();
@@ -521,12 +547,12 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                             case close_section:
 
                                 if (sections.size() <= inherited_section_count)
-                                    throw std::runtime_error{"Closing one too many section "s + full_tag_name()};
+                                    throw std::runtime_error{"Closing one too many section"s};
 
                                 assert(!sections.empty());
 
-                                if (sections.back().name_ != full_tag_name())
-                                    throw std::runtime_error{"Unclosed section "s + full_tag_name()};
+                                if (sections.back().name_ != tag_name)
+                                    throw std::runtime_error{"Unclosed section"s};
 
                                 if (!sections_excluded_from &&
                                     sections.back().array_ &&
@@ -560,7 +586,7 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                                     break;
                                 }
 
-                                if (const Partial* p = partials.find(full_tag_name())) {
+                                if (const Partial* p = partials.find(tag_name)) {
                                     shave(output, p->mustache_, object, partials, sections);
                                 }
 
@@ -572,7 +598,7 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
 
                     break;
 
-                    default: throw std::runtime_error{"Unfinished tag "s + full_tag_name()};
+                    default: throw std::runtime_error{"Unfinished tag"s};
                 }
             break;
         }
@@ -595,16 +621,17 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
 
             case waiting_for_tag_type: [[fallthrough]];
             case parsing_comment: [[fallthrough]];
+            case waiting_for_tag_name: [[fallthrough]];
             case parsing_tag_name: [[fallthrough]];
             case waiting_for_first_closing_brace: [[fallthrough]];
             case waiting_for_second_closing_brace:
-                throw std::runtime_error{"Unfinished tag "s + full_tag_name()};
+                throw std::runtime_error{"Unfinished tag"s};
             break;
     }
 
 
     if (sections.size() > inherited_section_count)
-        throw std::runtime_error{"Unfinished section "s + sections.back().name_};
+        throw std::runtime_error{"Unfinished section"s};
 }
 
 
