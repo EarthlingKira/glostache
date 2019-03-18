@@ -128,6 +128,18 @@ struct Value {
     {
     }
 
+    Value(float v) noexcept: v_{std::to_string(v)}
+    {
+    }
+
+    Value(double v) noexcept: v_{std::to_string(v)}
+    {
+    }
+
+    Value(long double v) noexcept: v_{std::to_string(v)}
+    {
+    }
+
     Value(Object_ptr v) noexcept: v_{std::move(v)}
     {
     }
@@ -207,6 +219,21 @@ struct Value {
     }
 
     Value& operator=(int64_t v) noexcept
+    {
+        return *this = std::to_string(v);
+    }
+
+    Value& operator=(float v) noexcept
+    {
+        return *this = std::to_string(v);
+    }
+
+    Value& operator=(double v) noexcept
+    {
+        return *this = std::to_string(v);
+    }
+
+    Value& operator=(long double v) noexcept
     {
         return *this = std::to_string(v);
     }
