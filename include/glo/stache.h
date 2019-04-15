@@ -70,6 +70,18 @@ struct Value {
             v_ = v.get_array();
     }
 
+    Value(Value&& v) noexcept
+    {
+        if (v.is_string())
+            v_ = std::move(v.get_string());
+        else if (v.is_object())
+            v_ = std::move(v.get_object_ptr_ref());
+        else if (v.is_bool())
+            v_ = std::move(v.get_strong_bool());
+        else if (v.is_array())
+            v_ = std::move(v.get_array());
+    }
+
     Value& operator=(const Value& v) noexcept
     {
         if (v.is_string())
@@ -80,6 +92,20 @@ struct Value {
             v_ = v.get_strong_bool();
         else if (v.is_array())
             v_ = v.get_array();
+
+        return *this;
+    }
+
+    Value& operator=(Value&& v) noexcept
+    {
+        if (v.is_string())
+            v_ = std::move(v.get_string());
+        else if (v.is_object())
+            v_ = std::move(v.get_object_ptr_ref());
+        else if (v.is_bool())
+            v_ = std::move(v.get_strong_bool());
+        else if (v.is_array())
+            v_ = std::move(v.get_array());
 
         return *this;
     }
