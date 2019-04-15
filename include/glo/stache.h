@@ -498,6 +498,32 @@ struct Object {
 
 
     /**
+     * Find Value by key.
+     */
+    Value& at(std::string_view key)
+    {
+        auto it = std::find_if(nodes_.begin(), nodes_.end(), [key](const Node& n){ return n.key_ == key; });
+        if (it != nodes_.end())
+            return it->value_;
+
+        throw std::out_of_range{"Key not found"};
+    }
+
+
+    /**
+     * Find Value by key.
+     */
+    const Value& at(std::string_view key) const
+    {
+        auto it = std::find_if(nodes_.begin(), nodes_.end(), [key](const Node& n){ return n.key_ == key; });
+        if (it != nodes_.end())
+            return it->value_;
+
+        throw std::out_of_range{"Key not found"};
+    }
+
+
+    /**
      * Find node iterator by key.
      */
     Node_list::iterator find_it(std::string_view key) noexcept
