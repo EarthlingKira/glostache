@@ -686,7 +686,32 @@ struct Partials {
 
 
 
-glo::stache::Partial load_partial_by_name(std::filesystem::path folder, std::string name);
+
+class Cache {
+public:
+
+    struct Relative_partial {
+        std::filesystem::path relative_path_;
+        Partial partial_;
+    };
+
+    Cache(std::filesystem::path root_path);
+
+    void load_partials();
+
+    Partial find(std::filesystem::path relative_path);
+
+
+private:
+    std::filesystem::path root_path_;
+    std::vector<Relative_partial> partials_;
+};
+
+
+/**
+ * Load a partial by name in folder, expecting %name%.mustache file name.
+ */
+Partial load_partial_by_name(std::filesystem::path folder, std::string name);
 
 
 

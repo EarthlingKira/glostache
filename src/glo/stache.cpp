@@ -7,44 +7,12 @@
 #include <fstream>
 
 
+
+
+#include <iostream>
+
 using std::string_literals::operator""s;
 
-
-
-// #include <iostream>
-
-
-template<unsigned char delimiter>
-static inline std::string join(const std::vector<std::string>& vector)
-{
-    switch (vector.size()) {
-        case 0:
-            return {""};
-        
-        case 1:
-            return vector.back();
-        
-        default: {
-            assert(vector.size() >= 2);
-            
-            size_t size = vector.size() - 1;
-            for (const std::string& string: vector)
-                size += string.size();
-            
-            std::string out;
-            out.reserve(size);
-            
-            auto it = vector.begin();
-            out = *it;
-            
-            while (++it != vector.end()) {
-                out += *it;
-            }
-            
-            return out;
-        }
-    }
-}
 
 
 
@@ -56,8 +24,6 @@ namespace stache {
 
 static inline void add_string_html_encoded(std::string_view v, bool nl2br, std::string& o)
 {
-//     o.reserve(o.size() + v.size());
-
     for (auto c: v) {
 
         switch (c) {
@@ -89,7 +55,42 @@ static inline void add_string_html_encoded(std::string_view v, bool nl2br, std::
 
 
 
-glo::stache::Partial load_partial_by_name(std::filesystem::path folder, std::string name)
+Cache::Cache(std::filesystem::path root_path):
+    root_path_{std::move(root_path)}
+{
+    load_partials();
+}
+
+
+
+void Cache::load_partials()
+{
+    partials_.clear();
+
+    for (const auto& p : std::filesystem::recursive_directory_iterator{root_path_}) {
+        if (!p.is_regular_file())
+            continue;
+
+        const auto relative_path = std::filesystem::relative(p.path(), root_path_).replace_extension("");
+
+        partials_.push_back({relative_path, load_partial_by_name(p.path().parent_path(), relative_path.filename())});
+    }
+}
+
+
+
+Partial Cache::find(std::filesystem::path relative_path)
+{
+    for (const Relative_partial& p : partials_) {
+        if (p.relative_path_ == relative_path)
+            return p.partial_;
+    }
+    throw std::out_of_range{"File "s + relative_path.string() + ".mustache not found"s};
+}
+
+
+
+Partial load_partial_by_name(std::filesystem::path folder, std::string name)
 {
     std::filesystem::path path = folder / (name + ".mustache"s);
     std::ifstream ifstream{path.string()};
@@ -212,7 +213,6 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                 }
 
                 return object.find(tag_name);
-                break;
                 
             default:
         
@@ -225,7 +225,6 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                 }
 
                 return find_node_recursively_in_object(object);
-                break;
         }
     };
 
@@ -368,7 +367,7 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                                 state = waiting_for_first_closing_brace;
                                 break;
                             
-                            default: 
+                            default:
                                 throw std::runtime_error{"Unfinished/Invalid tag"};
                         }
                         break;
@@ -691,7 +690,6 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
             case waiting_for_first_closing_brace: [[fallthrough]];
             case waiting_for_second_closing_brace:
                 throw std::runtime_error{"Unfinished tag"s};
-            break;
     }
 
 

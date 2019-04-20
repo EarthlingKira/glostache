@@ -9,6 +9,8 @@ using namespace glo::stache;
 
 
 TEST_CASE("Test simple variable output", "[glostache]") {
+
+    Cache cache{"/home/home_kira/projects/fibi/fibi-master/src/mustache/"};
     
     Mustache mustache{"Hallo {{name}}!"};
     
@@ -20,6 +22,7 @@ TEST_CASE("Test simple variable output", "[glostache]") {
     
     CHECK(shave(mustache, object, partials) == "Hallo Kira!");
 }
+
 
 
 TEST_CASE("Test section variable output", "[glostache]") {
@@ -42,6 +45,7 @@ TEST_CASE("Test section variable output", "[glostache]") {
 }
 
 
+
 TEST_CASE("Test inverted section", "[glostache]") {
     
     Mustache mustache{"Hello {{#name}}{{name}}{{/name}}{{^name}}Anonymous{{/name}}!"};
@@ -57,6 +61,7 @@ TEST_CASE("Test inverted section", "[glostache]") {
     CHECK(shave(mustache, object, partials) == "Hello Kira!");
     CHECK(shave(mustache, anonymous, partials) == "Hello Anonymous!");
 }
+
 
 
 TEST_CASE("Test string section with self-dot", "[glostache]") {
@@ -75,6 +80,7 @@ TEST_CASE("Test string section with self-dot", "[glostache]") {
     CHECK(shave(mustache, object, partials) == "Hello Kira!");
     CHECK(shave(mustache, anonymous, partials) == "Hello Anonymous!");
 }
+
 
 
 TEST_CASE("Test string section with list", "[glostache]") {

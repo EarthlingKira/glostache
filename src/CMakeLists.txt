@@ -1,45 +1,42 @@
 project(glostache_src)
 
 
+set(cpp_files glo/stache.cpp)
 
-include_directories(SYSTEM
-    $ENV{HOME}/local/include
-)
-include_directories(SYSTEM
-    $ENV{HOME}/local/include
-)
 
-set(cpp_files
-    glo/stache.cpp
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    set(compiler_specific_compile_options
+        -Weverything
+        -Wno-c++98-compat
+        -Wno-switch-enum
+        -Wno-missing-braces
     )
+endif()
 
-set(libraries)
 
 add_compile_options(
-    -std=c++17
 
-    -O3
+    "$<$<CONFIG:Debug>:-O0>"
+    "$<$<CONFIG:Release>:-O3>"
+
+    ${compiler_specific_compile_options}
+
+    "$<$<CONFIG:Debug>:-Werror>"
+
 
     -march=native
 )
 
-add_library(glostache STATIC
+add_library(glostache_lib STATIC
     ${cpp_files}
 )
 
-target_link_libraries(glostache PUBLIC stdc++fs)
+set_property(TARGET glostache_lib PROPERTY CXX_STANDARD 20)
 
-# add_executable(glostache_bin
-#     main.cpp
-# )
-
-# target_link_libraries(glostache_bin PRIVATE
-#     glostache_lib
-#     ${libraries}
-# )
+target_link_libraries(glostache_lib PRIVATE stdc++fs)
 
 
-install(TARGETS glostache
+install(TARGETS glostache_lib
         ARCHIVE DESTINATION lib64)
 
 install(DIRECTORY
