@@ -8,7 +8,7 @@ set_property(TARGET glostache_test PROPERTY CXX_STANDARD 20)
 
 include_directories(test)
     
-target_link_libraries(glostache_test PRIVATE glostache_lib)
+target_link_libraries(glostache_test PRIVATE glostache)
 
 
-add_dependencies(glostache_test glostache_lib)
+add_dependencies(glostache_test glostache)

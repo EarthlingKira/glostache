@@ -27,16 +27,16 @@ add_compile_options(
     -march=native
 )
 
-add_library(glostache_lib STATIC
+add_library(glostache STATIC
     ${cpp_files}
 )
 
-set_property(TARGET glostache_lib PROPERTY CXX_STANDARD 20)
+set_property(TARGET glostache PROPERTY CXX_STANDARD 20)
 
-target_link_libraries(glostache_lib PRIVATE stdc++fs)
+target_link_libraries(glostache PRIVATE stdc++fs)
 
 
-install(TARGETS glostache_lib
+install(TARGETS glostache
         ARCHIVE DESTINATION lib64)
 
 install(DIRECTORY
