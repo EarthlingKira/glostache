@@ -31,6 +31,10 @@ add_library(glostache STATIC
     ${cpp_files}
 )
 
+target_compile_options(glostache PUBLIC $<$<CONFIG:Release>:-flto=thin>)
+
+target_link_options(glostache PUBLIC $<$<CONFIG:Release>:-flto=thin> -fuse-ld=lld -Wl,--threads$<$<CONFIG:Release>:,--strip-all,--thinlto-cache-dir=${PROJECT_BINARY_DIR}/lto.cache>)
+
 set_property(TARGET glostache PROPERTY CXX_STANDARD 20)
 
 target_link_libraries(glostache PRIVATE stdc++fs)
