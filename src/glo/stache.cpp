@@ -267,8 +267,10 @@ void shave(std::string& output, const Mustache& mustache, const Object& object, 
                     break;
 
                     default:
-                        if (sections_excluded_from)
+                        if (sections_excluded_from) {
+                            state = literal;
                             break;
+                        }
 
                         add_char('{');
                         add_char(c);
