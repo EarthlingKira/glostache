@@ -31,11 +31,17 @@ add_library(glostache STATIC
     ${cpp_files}
 )
 
-target_compile_options(glostache PUBLIC $<$<CONFIG:Release>:-flto=thin>)
+option(ENABLE_LTO "enable LTO" OFF)
 
-target_link_options(glostache PUBLIC $<$<CONFIG:Release>:-flto=thin> -fuse-ld=lld -Wl,--threads$<$<CONFIG:Release>:,--strip-all,--thinlto-cache-dir=${PROJECT_BINARY_DIR}/lto.cache>)
+if(ENABLE_LTO)
+    target_compile_options(glostache PUBLIC $<$<CONFIG:Release>:-flto=thin>)
 
-set_property(TARGET glostache PROPERTY CXX_STANDARD 20)
+    target_link_options(glostache PUBLIC $<$<CONFIG:Release>:-flto=thin -Wl,--thinlto-cache-dir=${PROJECT_BINARY_DIR}/lto.cache>)
+endif()
+
+target_link_options(glostache PUBLIC -fuse-ld=lld -Wl,--threads$<$<CONFIG:Release>:,--strip-all>)
+
+set_property(TARGET glostache PROPERTY CXX_STANDARD 17)
 
 target_link_libraries(glostache PRIVATE stdc++fs)
 
