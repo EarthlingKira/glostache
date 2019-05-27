@@ -24,7 +24,7 @@ add_compile_options(
     "$<$<CONFIG:Debug>:-Werror>"
 
 
-    -march=native
+    -march=core-avx-i
 )
 
 add_library(glostache STATIC
