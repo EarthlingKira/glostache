@@ -1,7 +1,9 @@
 project(glostache_src)
 
 
-set(cpp_files glo/stache.cpp)
+set(cpp_files
+    glo/stache.cpp
+    glo/json_x_mustache.cpp)
 
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
