@@ -9,8 +9,6 @@ using namespace glo::stache;
 
 
 TEST_CASE("Test simple variable output", "[glostache]") {
-
-    Cache cache{"/home/home_kira/projects/fibi/fibi-master/src/mustache/"};
     
     Mustache mustache{"Hallo {{name}}!"};
     
