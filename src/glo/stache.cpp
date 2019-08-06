@@ -40,7 +40,7 @@ static inline void add_string_html_encoded(std::string_view v, bool nl2br, std::
                 if (nl2br)
                     o += "<br>";
                 else
-                    o += ' ';
+                    o += '\n';
                 break;
             case '\t':
                 o += " &nbsp; &nbsp;";
