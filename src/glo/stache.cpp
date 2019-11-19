@@ -36,6 +36,12 @@ static inline void add_string_html_encoded(std::string_view v, bool nl2br, std::
             case '>':
                 o += "&gt;";
                 break;
+            case '\'':
+                o += "&apos;";
+                break;
+            case '"':
+                o += "&quot;";
+                break;
             case '\n':
                 if (nl2br)
                     o += "<br>";
